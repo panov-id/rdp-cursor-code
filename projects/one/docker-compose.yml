@@ -17,3 +17,18 @@ services:
       TZ: ${TZ}
     volumes:
       - ${HOST_PROJECTS_DIR}:${CONTAINER_PROJECTS_DIR}
+
+  php-launchpad:
+    image: php-launchpad
+    build:
+      context: .
+      dockerfile: Dockerfile-php-launchpad
+    working_dir: /app
+    volumes:
+      - ${HOST_PROJECTS_DIR}:/app
+    environment:
+      TZ: ${TZ}
+    stdin_open: true
+    tty: true
+    profiles:
+      - php
