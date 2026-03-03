@@ -1,0 +1,17 @@
+services:
+  debian-xfce-cursor:
+    container_name: ${CONTAINER_NAME}
+    build:
+      context: .
+      dockerfile: Dockerfile-rdp-cursor
+      args:
+        RDP_USER: ${RDP_USER}
+        RDP_PASS: ${RDP_PASS}
+    ports:
+      - "${RDP_PORT}:3389"
+    shm_size: ${SHM_SIZE}
+    restart: no
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ${HOST_PROJECTS_DIR}:${CONTAINER_PROJECTS_DIR}

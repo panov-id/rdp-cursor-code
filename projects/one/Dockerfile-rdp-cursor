@@ -1,0 +1,45 @@
+FROM debian:13-slim
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=Etc/UTC \
+    LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        tzdata locales \
+        xfce4 xfce4-goodies \
+        xrdp dbus-x11 sudo \
+        firefox-esr \
+        wget unzip curl git ca-certificates nano \
+    && ln -fs /usr/share/zoneinfo/${TZ} /etc/localtime && \
+    dpkg-reconfigure -f noninteractive tzdata && \
+    sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen && \
+    locale-gen && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN wget -O /tmp/cursor.deb "https://downloads.cursor.com/production/7d96c2a03bb088ad367615e9da1a3fe20fbbc6ae/linux/x64/deb/amd64/deb/cursor_2.5.26_amd64.deb" && \
+    apt-get update && \
+    apt-get install -y /tmp/cursor.deb && \
+    rm /tmp/cursor.deb && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ARG RDP_USER
+ARG RDP_PASS
+
+RUN useradd -m -s /bin/bash ${RDP_USER} && \
+    echo "${RDP_USER}:${RDP_PASS}" | chpasswd && \
+    usermod -aG sudo ${RDP_USER} && \
+    adduser xrdp ssl-cert
+
+RUN echo "startxfce4" > /home/${RDP_USER}/.xsession && \
+    chown ${RDP_USER}:${RDP_USER} /home/${RDP_USER}/.xsession
+
+RUN sed -i 's/max_bpp=32/max_bpp=24/' /etc/xrdp/xrdp.ini
+
+EXPOSE 3389
+
+CMD rm -f /var/run/xrdp/xrdp*.pid >/dev/null 2>&1 || true; \
+    service dbus restart >/dev/null 2>&1; \
+    xrdp-sesman --config /etc/xrdp/sesman.ini; \
+    xrdp --nodaemon --config /etc/xrdp/xrdp.ini
