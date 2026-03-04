@@ -1,17 +1,21 @@
 services:
-  debian-xfce-cursor:
-    container_name: ${CONTAINER_NAME}
+  desktop:
     build:
-      context: .
-      dockerfile: Dockerfile-rdp-cursor
+      dockerfile: ./Dockerfile-novnc
       args:
-        RDP_USER: ${RDP_USER}
-        RDP_PASS: ${RDP_PASS}
+        USER_NAME: ${USER_NAME}
+        USER_PASSWORD: ${USER_PASSWORD}
+    container_name: novnc-desktop
     ports:
-      - "${RDP_PORT}:3389"
-    shm_size: ${SHM_SIZE}
-    restart: no
+      - "${NOVNC_PORT}:6080"
+      - "${VNC_PORT}:5901"
+    shm_size: "1gb"
     environment:
-      TZ: ${TZ}
-    volumes:
-      - ${HOST_PROJECTS_DIR}:${CONTAINER_PROJECTS_DIR}
+      - VNC_PASSWORD=${VNC_PASSWORD}
+      - VNC_RESOLUTION=${VNC_RESOLUTION}
+      - VNC_DEPTH=${VNC_DEPTH}
+      - VNC_PORT=${VNC_PORT}
+      - NOVNC_PORT=${NOVNC_PORT}
+      - LANG=${LANG}
+      - TZ=${TZ}
+    restart: unless-stopped

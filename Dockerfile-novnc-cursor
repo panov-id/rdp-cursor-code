@@ -1,0 +1,86 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC
+
+# База + локаль
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        tzdata ca-certificates wget curl sudo locales \
+        dbus dbus-x11 x11-xserver-utils \
+    && ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
+    dpkg-reconfigure -f noninteractive tzdata && \
+    sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+    sed -i 's/# ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/' /etc/locale.gen && \
+    locale-gen && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+# Общесистемная раскладка: us,ru
+RUN if grep -q '^XKBLAYOUT=' /etc/default/keyboard; then \
+      sed -i 's/^XKBLAYOUT=.*/XKBLAYOUT="us,ru"/' /etc/default/keyboard; \
+    else \
+      echo 'XKBLAYOUT="us,ru"' >> /etc/default/keyboard; \
+    fi
+
+# XFCE + Firefox
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        xfce4 xfce4-goodies \
+        xfce4-session \
+        xfce4-xkb-plugin \
+        firefox \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# TigerVNC
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        tigervnc-standalone-server tigervnc-common tigervnc-tools \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Cursor
+RUN wget -O /tmp/cursor.deb "https://api2.cursor.sh/updates/download/golden/linux-x64-deb/cursor/2.6" && \
+    apt-get update && \
+    apt-get install -y /tmp/cursor.deb && \
+    rm /tmp/cursor.deb && \
+    rm -f /etc/apt/sources.list.d/cursor.list /etc/apt/sources.list.d/cursor.sources 2>/dev/null || true && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Доп. инструменты
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Пользователь и пароли
+ARG VNC_USER
+ARG VNC_PASS
+
+RUN useradd -m -s /bin/bash "${VNC_USER}" && \
+    echo "${VNC_USER}:${VNC_PASS}" | chpasswd && \
+    usermod -aG sudo "${VNC_USER}"
+
+# XFCE-сессия
+RUN echo "startxfce4" > /home/${VNC_USER}/.xsession && \
+    chown ${VNC_USER}:${VNC_USER} /home/${VNC_USER}/.xsession
+
+# xstartup для VNC
+RUN mkdir -p /home/${VNC_USER}/.vnc && \
+    printf '%s\n' \
+      '#!/bin/sh' \
+      'unset SESSION_MANAGER' \
+      'unset DBUS_SESSION_BUS_ADDRESS' \
+      'export LANG=en_US.UTF-8' \
+      'startxfce4 &' \
+      'wait' \
+      > /home/${VNC_USER}/.vnc/xstartup && \
+    chown ${VNC_USER}:${VNC_USER} /home/${VNC_USER}/.vnc/xstartup && \
+    chmod +x /home/${VNC_USER}/.vnc/xstartup
+
+# Установка пароля VNC (эмулируем ввод)
+RUN chown -R ${VNC_USER}:${VNC_USER} /home/${VNC_USER}/.vnc && \
+    su - ${VNC_USER} -c "printf '%s\n%s\n\n' '${VNC_PASS}' '${VNC_PASS}' | vncpasswd" && \
+    chmod 600 /home/${VNC_USER}/.vnc/passwd
+
+EXPOSE 5901
+
+CMD su - ${VNC_USER} -c 'vncserver :1 -geometry 1920x1080 -localhost no && tail -F ~/.vnc/*.log'
