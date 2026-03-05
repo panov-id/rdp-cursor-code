@@ -1,16 +1,18 @@
 services:
-  desktop:
+  novnc-cursor:
+    container_name: novnc-cursor
     build:
-      dockerfile: ./Dockerfile-novnc
+      dockerfile: Dockerfile-novnc-cursor
       args:
-        USER_NAME: ${USER_NAME}
-        USER_PASSWORD: ${USER_PASSWORD}
-    container_name: novnc-desktop
+        DESKTOP_USER: ${DESKTOP_USER}
+        DESKTOP_PASSWORD: ${DESKTOP_PASSWORD}
     ports:
       - "${NOVNC_PORT}:6080"
       - "${VNC_PORT}:5901"
-    shm_size: "1gb"
+    shm_size: "8gb"
     environment:
+      - DESKTOP_USER=${DESKTOP_USER}
+      - DESKTOP_PASSWORD=${DESKTOP_PASSWORD}
       - VNC_PASSWORD=${VNC_PASSWORD}
       - VNC_RESOLUTION=${VNC_RESOLUTION}
       - VNC_DEPTH=${VNC_DEPTH}
@@ -18,4 +20,6 @@ services:
       - NOVNC_PORT=${NOVNC_PORT}
       - LANG=${LANG}
       - TZ=${TZ}
-    restart: unless-stopped
+    restart: no
+    volumes:
+      - "${HOST_PROJECTS_DIR}:${CONTAINER_PROJECTS_DIR}"
